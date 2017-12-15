@@ -1,0 +1,182 @@
+---
+output:
+  pdf_document: 
+    latex_engine: xelatex
+  html_document: default
+---
+s---
+title: "Using SQL from R - Instructions and assignment."
+author: "Assignment - MA615/415 - 10 Nov 2016"
+date: "Due Wednesday November 16"
+output: pdf_document
+---
+
+In yesterday's class, you learned how to access a Postgres database running on the Amazon cloud. Now you need to use what you learned yesterday from R.
+
+The slides from yesterday's class are attached.
+
+Begin by installing RPostreSQL.  The documentation for RPostreSQL is included in this assignment.
+
+Now let's connect to the Postgres database with R.
+
+
+```{r, warning=FALSE, message=FALSE}
+
+library(RPostgreSQL)
+```
+
+
+To get started, set up the connection parameters you will need.
+These are the same parameters you used yesterday, except you must use name the database you will use.
+
+```{r}
+host <- "analyticsga-east2.c20gkj5cvu3l.us-east-1.rds.amazonaws.com"
+port <- "5432"
+username <- "analytics_student"
+password <- "analyticsga"
+
+## Use the name of the specific database you will access
+dbname <- "iowa_liquor_sales_database"
+
+## Specify the PostreSQL driver
+drv <- dbDriver("PostgreSQL")
+
+## Now establish the connection
+con <- dbConnect(drv, user = username, password = password, 
+                 dbname = dbname, port = port, host = host)
+```
+
+Test the connection with some simple commands. 
+
+```{r}
+
+dbListTables(con)
+
+dbListFields(con, "products")
+
+```
+
+Categories of product are divided into 20 general groups accord to type of liquer (for example, 'Peach Brandies' is classified as 'Brandies', 'Sotch Whiskies' is classified as 'Whiskies' and 'Flavored Vodka' is classified as 'Vodka').
+The groups are 'CACAO', 'SCHNAPPS', 'GIN','AMARETTO','SCHNAPPS', 'RUM','LIQUEUR','BRANDIES','SPECIALTY','VODKA','WHISKIES','ALMOND','RYE','BOND BOURON','MENTHE','COCKTAILS','AMERICAN ALCOHOL','MALT SCOTCH','ALE' and 'TEQUILA'
+
+I would like to summary the difference of cast_cost about mean, variance, min and max in different groups
+```{r}
+r <- dbGetQuery(con, statement = paste(
+   "select category, cast(avg(case_cost) as integer), cast(variance(case_cost) as integer),cast(min(case_cost) as integer),cast(max(case_cost) as integer)",
+   "from( select category_name, case_cost,",
+    "CASE",
+    "WHEN category_name LIKE '%CACAO%' then 'CACAO'",
+    "WHEN category_name LIKE '%SCHNAPPS%' then 'SCHNAPPS'",
+    "when category_name LIKE '%GINS' then 'GIN'",
+    "when category_name LIKE '%AMARETTO%' then 'AMARETTO'",
+    "when category_name LIKE '%SCHNAPPS%' then 'SCHNAPPS'",
+    "when category_name LIKE '%RUM%' then 'RUM'",
+    "when category_name LIKE '%LIQUEUR%' then 'LIQUEUR'",
+    "when category_name LIKE '%BRANDIES%' then 'BRANDIES'",
+    "when category_name LIKE '%SPECIALTY%' then 'SPECIALTY'",
+    "when category_name LIKE '%VODKA%' then 'VODKA'",
+    "when category_name LIKE '%WHISKIES%' then 'WHISKIES'",
+    "when category_name LIKE '%ALMOND%' then 'ALMOND'",
+    "when category_name LIKE '%RYE' then 'RYE'",
+    "when category_name LIKE '%BOND BOURON%' then 'BOND BOURON'",
+    "when category_name LIKE '%MENTHE%' then 'MENTHE'",
+    "when category_name LIKE '%COCKTAILS%' then 'COCKTAILS'",
+    "when category_name LIKE '%AMERICAN ALCOHOL%' then 'AMERICAN ALCOHOL'",
+    "when category_name LIKE '%MALT SCOTCH%' then 'MALT SCOTCH'",
+    "when category_name LIKE '%ALE' then 'ALE'",
+    "when category_name LIKE '%TEQUILA' then 'TEQUILA'",
+    "END AS category",
+    "FROM products) AS temp",
+    "Where category IS NOT NULL",
+    "group by category"))
+r <- as.data.frame(r)
+```
+
+First 6 rows of this new table
+```{r}
+head(r)
+```
+
+```{r}
+require(ggplot2)
+require(ggthemes)
+```
+
+Histogram about the average of the cast_cost for each group
+Type of MALT SCOTCH has the max average of cast_cost
+
+
+```{r}
+g <- ggplot(r,aes(x=category,y=avg)) +
+labs(title = "The average of the cast_cost for different groups")
+g + geom_bar(stat="identity") + geom_text(aes(label=avg,vjust=-0.2))+
+theme(title = element_text(size = 14),
+axis.text.x=element_text(angle=45,size=5,face="bold"))
+```
+
+Histogram about the variance of the cast_cost for each group
+Type of BRANDIES has the max variance of cast_cost
+
+
+```{r}
+
+
+g <- ggplot(r,aes(x=category,y=variance))+
+labs(title = "The variance of the cast_cost for different groups")
+g + geom_bar(stat="identity") + geom_text(aes(label=variance,vjust=-0.2))+
+theme(title = element_text(size = 14),
+axis.text.x=element_text(angle=45,size=5,face="bold"))
+```
+
+Histogram about the minimum of the cast_cost for each group.
+Min cast_cost of LIQUEUR, MALT SCOTCH and VODKA are all zero.
+Min cast_cost of AMERICAN ALCOHOL is the largest among these types
+
+
+```{r}
+
+
+g <- ggplot(r,aes(x=category,y=min))+
+labs(title = "The minimum of the cast_cost for different groups")
+g + geom_bar(stat="identity") + geom_text(aes(label=min,vjust=-0.2))+
+theme(title = element_text(size = 14),
+axis.text.x=element_text(angle=45,size=5,face="bold"))
+```
+
+Histogram about the maximum of the cast_cost for each group. 
+Maximum of the cast_cost of WHISKIES is the largest. 
+
+
+```{r}
+
+
+g <- ggplot(r,aes(x=category,y=max))+
+labs(title = "The maximum of the cast_cost for different groups")
+g + geom_bar(stat="identity") + geom_text(aes(label=max,vjust=-0.2))+
+theme(title = element_text(size = 14),
+axis.text.x=element_text(angle=45,size=5,face='bold'))
+
+
+
+
+```
+
+Now, you should be able to make a histgroam for case_cost, calculate summary statistics such as the mean and variance, median, and so on.
+
+To do this you will need to do some data cleaning. You'll need to explore and understand the case_cost data.  You may need to look at product categories, amount of product delivered per case, or the kind of product in the case.  There may be variables in the other table that help explain the case_cost data.
+
+
+Produce a markdown document (or extend this one) and discuss case_cost. Is it related to other variables in the database?  Make sure all the code you write is in the markdown file, even if it isn't shown in the document.  Make sure that your discussion includes at least one plot that is well-labeled.  
+
+Submit a PDF document and the markdown file used to produce it.
+
+
+
+
+
+
+
+
+
+
+

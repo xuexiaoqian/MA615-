@@ -1,0 +1,6 @@
+library("sqldf")
+employees <- read.csv("~/Desktop/MA415/employees.csv")
+orders <- read.csv("~/Desktop/MA415/orders.csv")
+View(employees)
+male_employees <- sqldf ("SELECT * FROM employees WHERE gender = 'm'")
+View(male_employees)

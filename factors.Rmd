@@ -1,0 +1,98 @@
+---
+title: "factors"
+author: "Xiaoqian Xue"
+date: "10/16/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(forcats)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+```{r}
+gss_cat
+gss_cat %>% count(race)
+p <-ggplot(gss_cat, aes(race))
+p + geom_bar()
+p + geom_bar() + scale_x_discrete(drop=FALSE)
+relig_summary <- gss_cat %>%
+  group_by (relig) %>%
+  summarise( 
+    age = mean (age, na.rm = TRUE),
+    tvhours = mean(tvhours, na.rm=TRUE),
+    n=n()
+    )
+ggplot(relig_summary, aes(tvhours, relig)) + geom_point()
+
+# the factor
+# the numeric vector you want to use to reorder the levels 
+ ggplot (relig_summary, aes(tvhours, fct_reorder(relig,tvhours))) + geom_point()
+ 
+ # use mutate to make the data easier to handle
+ relig_summary %>%
+   mutate (relig = fct_reorder(relig,tvhours)) %>% ggplot(aes(tvhours, relig)) + geom_point()  ## reorder the category
+ 
+ # this plot shows how average age varies across reported in come level
+ rincome_summary <- gss_cat %>%
+   group_by(rincome) %>%
+   summarise(
+     age = mean(age, na.rm=),
+     tvhours = mean(tvhours, na.rm = TRUE),
+     n = n()
+   )
+ ggplot(rincome_summary,aes(age, fct_reorder(rincome, age))) + 
+   geom_point()
+ 
+ ggplot(rincome_summary, aes(age, rincome)) + geom_point()
+ 
+ by_age <- gss_cat %>%
+   filter(!is.na(age)) %>%
+   group_by(age,marital) %>%
+   count() %>%
+   mutate (prop = n/ sum(n))
+ 
+ ggplot(by_age,aes(age,prop, colour = marital)) + geom_line(na.rm = TRUE)
+```
+# modifying facotr levels
+```{r}
+gss_cat %>% count(partyid)
+
+## remember you are meking plots for people
+gss_cat %>% mutate(partyid = fct_recode (partyid,
+                                         "Republican, strong" ="Strong republican", 
+                                         "Republican, weak" = "Weak republican",
+                                         "Independent, near rep" = "Ind, near rep",
+                                         "Independent, near dem" = " Ind, near dem",
+                                         "Democrat, strong" = " Strong democrat",
+                                         "Democrat, weak" = "Weak democrat"))
+
+gss_cat %>%
+  mutate(relig = fct_lump(relig, n = 10)) %>%
+  count(relig , sort = TRUE) %>%
+  print (n= Inf)
+
+
+```
+

@@ -1,0 +1,56 @@
+---
+title: "ggplot2"
+author: "Xiaoqian Xue"
+date: "9/15/2017"
+output: html_document
+---
+
+```{r}
+library(ggplot2)
+mpg
+
+ggplot(data=mpg) +
+  geom_point(mapping = aes(x = displ, y = hwy))
+# + means get new layer
+
+ggplot(data = mpg, aes(x=displ, y = hwy))  + geom_point()
+
+ggplot(data = mpg) + 
+  geom_point(mapping = aes(x = displ, y = hwy, color = class))
+
+ggplot(data = mpg) +
+  geom_point(mapping = aes(x = displ, y = hwy, size = class))
+
+### fixec
+ggplot(data = mpg) + 
+  geom_point(mapping = aes(x = displ, y = hwy, color = "blue"))
+
+# assign basic chart to p
+p <- ggplot(data = mpg,aes(x = displ, y = hwy)) 
+
+p + geom_point() +
+  geom_smooth(method="lm")
+
+# "lm": linear model
+
+p + geom_point() +
+  geom_smooth(method="loess")
+
+p + geom_point() + geom_rug(sides = "bl") + geom_smooth(method="loess")
+# show marginal distribution 
+
+e <- ggplot(mpg, aes(cty, hwy))
+e + geom_jitter(height = 2, width =2)
+# taking data to make sure not overprinting so that we can see the individual point.
+
+ggplot(data = mpg) + 
+  geom_point(mapping = aes(x = displ, y = hwy, alpha = class))
+# alpha uses transparency
+
+
+ggplot(data = mpg) + 
+  geom_point(mapping = aes(x = displ, y = hwy)) + facet_wrap 
+  
+
+
+```

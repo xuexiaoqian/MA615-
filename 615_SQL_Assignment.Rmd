@@ -1,0 +1,333 @@
+---
+title: "Using SQL from R"
+date: "Due Sunday November 12, 11:30pm"
+output: pdf_document
+---
+
+In yesterday's class, you learned how to access a postgres database running on the Amazon cloud. You're going to use the skills you gained yesterday as well as your prior knowledge of R in this assignment.
+
+Please note that if you get an error along the following lines, you should reconnect to the database. All you would need to do is establish the connection again.
+
+```
+> Error in postgresqlExecStatement(conn, statement, ...) : 
+  RS-DBI driver: (could not Retrieve the result : server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+)
+```
+
+Now, let's connect to the postgres database with R.
+
+To get started, set up the connection parameters you will need. These are the same parameters you used yesterday, however, we will be connecting to a different database.
+
+```{r, warning=FALSE, message=FALSE}
+library(RPostgreSQL)
+
+host <- "analyticsga-east2.c20gkj5cvu3l.us-east-1.rds.amazonaws.com"
+port <- "5432"
+username <- "analytics_student"
+password <- "analyticsga"
+dbname <- "nyc_taxi_trips_database"
+drv <- dbDriver("PostgreSQL")
+
+#  establish the connection
+con <- dbConnect(drv, user = username, password = password,
+                 dbname = dbname, port = port, host = host)
+```
+
+Test the connection with some simple commands. 
+
+```{r}
+# explore tables in the database
+dbListTables(con)
+
+# explore column names in each table
+dbListFields(con, "trip_data")
+dbListFields(con, "trip_fares")
+```
+
+The tables in the NYC taxi trips database are: "trip_data" and "trip_fares". 
+
+Now, you're ready to use SQL on the NYC taxi trips database. Start by exploring the data.
+
+```{r}
+# explore trip_data
+dbGetQuery(con, statement = "
+           SELECT * 
+           FROM trip_data LIMIT 5")
+
+# how many rows are we dealing with? this may take 10+ seconds...
+dbGetQuery(con, statement = "
+           SELECT COUNT(*) 
+           FROM trip_data")
+```
+
+We are dealing with 14.78 million rows! This is also the case for trip_fares table. Depending on the queries you do moving forward, add a LIMIT statement, to limit the number of rows in the output. 
+
+Now let's do some statistical exploration. Look at trip_distance data. That should be easy, right? It's just a single number from each record in the trip_data table. We'll add a limit of 20000 so that we're just dealing with the first 20K rows. Feel free to adjust this number and query as you see fit [ex: you may want to remove null values and/or adjust the LIMIT]. 
+
+```{r}
+trip_distance <- dbGetQuery(con, statement = "
+                 SELECT trip_distance 
+                 FROM trip_data
+                 LIMIT 20000")
+```
+
+You can see that trip_distance is a data frame:
+
+```{r}
+str(trip_distance)
+```
+
+```
+Explore the trip_distance data by...
+- creating a histogram in ggplot2
+- calculate summary statistics
+    - mean
+    - median
+    - min
+    - max
+    - anything else you think could be interesting
+    
+Note any meaningful insights you find.
+```    
+
+```{r}
+library(ggplot2)
+
+# add ggplot code + summary stats + insights in this chunk!
+ggplot(data = trip_distance, aes(trip_distance)) +
+  geom_histogram(breaks = seq (0,55, by =2),
+                 col = "red",
+                 fill = "yellow",
+                 alpha = .2) +
+  labs (title = "Histogram for Trip Distance") +
+  labs (x = "Trip Distance", y = "Count")
+
+
+numdistance <- data.matrix(trip_distance, rownames.force = NA)
+mean(numdistance)
+median(numdistance)
+max(numdistance)
+min(numdistance)
+
+# Insights: From the histogram for trip distance, we can see that more than ten thousands people (around half of the total observations) took taxi around 2 miles. The histogram clearly shows a right-skewed distribution around 20000 observations. 
+
+```
+
+There may be variables in trip_data that can help explain the trip_distance data, like *passenger_count* and *trip_time_in_secs*. 
+
+Rework our original query for _trip_distance_ to add passenger_count and trip_time_in_secs in our dataframe. HINT: you just need to adjust the SELECT statement. Don't forget to add a LIMIT!
+
+If you'd like, you can convert trip_time_in_secs to minutes within the query. 
+
+Example: _SELECT trip_time_in_secs/60 AS trip_time_in_mins FROM trip_data LIMIT 20000_
+
+```{r}
+trip_distance <- dbGetQuery(con, statement = "
+                 SELECT trip_distance, passenger_count, trip_time_in_secs
+                 FROM trip_data
+                 LIMIT 20000")
+trip_time_in_mins <- dbGetQuery(con, statement = "
+                 SELECT trip_time_in_secs/60
+                 AS trip_time_in_mins
+                 FROM trip_data
+                 LIMIT 20000")
+
+```
+
+
+Visually explore the relationship between *trip_distance* and *passenger_count*. Also, visualize the relationship between *trip_distance* and *trip_time_in_secs* [or trip_time_in_mins]. Use whatever graph style you think is best.
+
+One would expect that a high distance value would likely be associated with a high time value. Is this the case? Note any insights you find.
+
+```{r}
+# add ggplot code + insights in this chunk!
+passenger_count <- dbGetQuery(con, statement = "
+                 SELECT passenger_count
+                 FROM trip_data
+                 LIMIT 20000")
+
+ggplot(data = trip_distance, aes(trip_distance,passenger_count)) + 
+  geom_point()
+
+# We can see from this scatterplot that only when there is only one passenger, the trip distance is the longest greater than 25 miles. When the passenger number is between 2 to 6, the distance will not be so long and generally below 25 miles. 
+
+ggplot(data = trip_distance, aes(x = trip_distance, y=trip_time_in_mins)) +
+  scale_x_continuous(expand = c(0,0))+
+  scale_y_continuous(expand = c(0,0))+
+  geom_point() +
+  geom_smooth(method="lm", color= "darkred",se=FALSE) 
+
+# The graph is not so clearly to indicate the relationship between time and distance. Therefore, we need to preclude some possible outliers and focus on the region that the points cluster. We choose the region when distance is below 25 and time below 50. 
+
+
+
+ggplot(data = trip_distance, aes(x = trip_distance, y=trip_time_in_mins)) +
+  geom_point()+
+  geom_smooth(method="lm", color= "darkred",se=FALSE) +
+  xlim(c(0,25)) + 
+  ylim(c(0,50))
+
+# This graph is much clearer to look at the relationship. However, the graph shows that there is no relationship between time and distance as the fitting line is a horizontal line. When the distance value is large, some of the associated time value are not high. Therefore, the prediction is wrong. 
+```
+
+
+Awesome! Now let's check out the trip_fares data.
+
+```{r}
+# explore trip_fares
+dbGetQuery(con, statement = "
+           SELECT * 
+           FROM trip_fares 
+           LIMIT 5")
+```
+
+Now, let's get the number of transactions/trips (essentially the number of rows) for each payment type. You could order by payment_type in descending order.
+
+You will need a COUNT(*) in the SELECT statement. You will also need a GROUP BY statement. If you get stuck, go back to the 615_SQL_starter script and look for the question "how many vendors are there per county" -- use that query as a template!
+
+Note: you do not need to use a LIMIT for this query. 
+
+```
+Info on the payment types
+- "CRD" -- card, debit or credit
+- "CSH" -- cash
+- "DIS" -- disputed fare 
+- "NOC" -- no charge
+- "UNK" -- unknown
+```
+
+```{r}
+dbGetQuery(con, statement = "
+SELECT payment_type, count(*) as num_transactions
+FROM trip_fares
+GROUP BY payment_type
+ORDER BY payment_type DESC
+           ")      
+# what does the query output tell us?
+# The debit or credit card has the largest number of transactions. The unknown payment has the least number of transactions. The disputed fare has the second least number of transactions. 
+```
+
+
+What's the average (AVG) total_amount by payment_type? You will need a GROUP BY statement. An ORDER BY statement may be helpful too. Don't use a LIMIT this time. 
+
+What does the output tell us? Are there any insights you can draw?
+
+```{r}
+dbGetQuery(con, statement = "
+SELECT payment_type, avg(total_amount) as ave_amount
+FROM trip_fares
+GROUP BY payment_type
+ORDER BY ave_amount DESC
+           ")  
+
+# what does the query output tell us?
+# The average total amount of payment is highest when the payment is unknown. The cash payment has the least amount of average payment. The credit or debit card payment has the second highest average total amount of payment. 
+```
+
+
+How about the average (AVG) tip_amount by payment_type? You will need a GROUP BY statement. An ORDER BY statement may be helpful too. Don't use a LIMIT this time. 
+
+What does the output tell us? Are there any insights you can draw?
+
+```{r}
+dbGetQuery(con, statement = "
+SELECT payment_type, avg(tip_amount) as ave_tip
+FROM trip_fares
+GROUP BY payment_type
+ORDER BY ave_tip DESC
+           ")  
+
+
+# what does the query output tell us?
+# The average tip amount is the lowest when people use cash, which is almost 0. The average tip amounts of the disputed fare and the no charge payment are almost the same and also close to 0. People pay the highest amount of tip as the payment type is unknown. 
+
+```
+
+Create a chart or two for payment_type. 
+
+Ideas: visualize any of the queries you just ran. The charts can be as simple or complex as you'd like. Perhaps you want to compare _just_ cash with card data points? If yes, you'd need to manipulate the query with a WHERE statement. 
+
+Example of a WHERE statement query from the Iowa Liquors Database: _SELECT county, FROM sales WHERE county = 'Polk' or county = 'Linn'_
+
+Please note the chart(s) you create tell us. Note any meaningful insights.
+
+```{r}
+
+data_for_chart <- dbGetQuery(con, statement = "
+SELECT payment_type, count(*) as num_transactions, avg(total_amount) as ave_amount, avg(tip_amount) as ave_tip
+FROM trip_fares
+WHERE payment_type = 'CRD' or payment_type = 'CSH'
+GROUP BY payment_type
+ORDER BY payment_type DESC
+           ")      
+                   
+# add ggplot code + insights here!
+
+ggplot(data_for_chart, aes(reorder(payment_type, num_transactions), num_transactions)) +
+  geom_bar(stat="identity", width = 0.5) +
+  labs(title = "Histogram with Number of Transactions",
+       subtitle = "By Card and Cash") +
+  coord_flip()
+
+ggplot(data_for_chart, aes(reorder(payment_type, ave_amount), ave_amount)) +
+  geom_bar(stat="identity",width = 0.5) +
+  labs(title = "Histogram with Average of Total Amount",
+       subtitle = "By Card and Cash") +
+  coord_flip()
+
+ggplot(data_for_chart, aes(reorder(payment_type, ave_tip), ave_tip)) +
+  geom_bar(stat="identity",width = 0.5) +
+  labs(title = "Histogram with Average of Tip Payment",
+       subtitle = "By Card and Cash") +
+  coord_flip()
+
+# We can see from these three bar charts that the biggest difference by using card and cash for the taxi payment is the average number tip payment. The average tip payment of using card is around 2.4 but people using cash usually do not give any tip. Also, we can notice that the average of total amount is higher when people use card than when people use cash. The average number of transaction for card is also higher than that for cash. 
+```
+
+
+
+
+As a bonus, try your best to create a map! You can either visualize pickup_longitude & pickup_latitude OR dropoff_longitude & dropoff_latitude. Although, if you'd like to, feel free to create more than 1 map.
+
+Here's a sample query you can run to get the data you need. You will need to add a LIMIT statement.  
+
+```{r}
+map_data <- dbGetQuery(con, statement = "
+                       SELECT pickup_longitude, pickup_latitude
+                       FROM trip_data
+                       LIMIT 5000")
+```
+
+Now to actually visualize your data... I suggest looking into *ggmap*. Some example code can be found here: 
+
+What does your map tell us? Are there any insights you can draw from your map?
+
+```{r}
+# install.packages("ggmap")
+library(ggmap)
+
+# add ggmap code + insights in this chunk!
+NYCmap <- get_map(location = c(lon=-73.97, lat = 40.73),
+                  zoom = 12,
+                  scale = "auto",
+                  maptype = "roadmap",
+                  source = "google",
+                  crop = TRUE)
+ggmap(NYCmap) + geom_point(data = map_data, aes(x = pickup_longitude, y = pickup_latitude))
+
+#The ggmap shows that most of the data were collected in the Manhattan area, especially in lower Mahattan and upper east side. Few data were collected in Brooklyn or Queens area.
+
+
+```
+
+
+Congrats! :) 
+
+You just used SQL to access data in the cloud AND used R to generate summary stats and create visualizations. Hopefully you were able to translate the data into insights too. 
+
+These are highly valued skills in the data science realm, which is why I would add this assignment to your GitHub! To take this assignment to the next level for your GitHub, you can expand and organize the analysis to create a story, as well as draw conclusions / make suggestions based on the analysis. 
+
+We weren't able to use joins in this assignment, because it would take some time. If you'd like to expand your analysis and try to join the tables but aren't sure where to start (there are multiple common fields you'd have to join on), get in touch. I can send you some sample queries.
+

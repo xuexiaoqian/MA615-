@@ -1,0 +1,77 @@
+---
+title: "Lecture 16"
+author: "Xiaoqian Xue"
+date: "10/11/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(stringr)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+## Strings {.smaller}
+```{r}
+str_length("abc")
+x <- c("abcdef","ghifjk")
+# The 3rd letter
+str_sub(x,3,3)
+
+# The 2nd to 2nd-to-last character
+str_sub(x,2,-2)
+
+str_sub(x,3,3) <-x
+x
+
+# duplicate individual strings
+str_dup(x,c(2,3))
+
+# matches any character (except a newline)
+x <- c("apple","beans", "pe.ar", "banana")
+str_view(x, ".e.")
+str_view(x, "e//.a")
+```
+
+## Extract
+```{r}
+colors <- c("blue","orange","yellow")
+color_match <- str_c(colors,collapse = "|")
+color_match
+has_color <- str_subset (sentences, color_match)
+matches <- str_extract (has_color, color_match)
+head(matches)
+```
+
+## Exact match 
+str_extract() gives us the complete match
+str_match() gives each individual component
+
+```{r}
+noun <- "(a|the)([^ ] +)"
+has_noun <- sentences %>%
+  str_subset(nount)%>%
+  head(10)
+found <- has_noun %>%
+  str_extract(noun)
+```

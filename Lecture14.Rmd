@@ -1,0 +1,38 @@
+---
+title: "Lecture14"
+author: "Xiaoqian Xue"
+date: "10/6/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(knitr)
+```
+
+## tidy data with tidyr
+```{r}
+table2
+# make sure to do this in a non-destructive script: 1. eliminate Blank cols 2. eliminate cols with only one data value 3. Note NA 4. Do not have repeat rows. 5.look for factors and redudancy (state number and state names, no need to use both)
+table4a
+kable(table4a)
+table3 %>% separate (rate, into = c("cases","population"))
+```
+
+##missing values
+```{r}
+# make implicit into explicit
+stocks %>% spread (year, return)
+
+# remove missing values 
+stocks %>%
+  spread (year,return)%
+  gather (year,return,'2015','2016')
+
+stocks %/%
+  complete(year,qtr)
+
+treatment %>%
+  fill(person)
+```

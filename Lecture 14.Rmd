@@ -1,0 +1,11 @@
+---
+title: "Lecture 14"
+author: "Xiaoqian Xue"
+date: "10/6/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
